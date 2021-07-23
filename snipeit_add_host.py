@@ -81,11 +81,96 @@ def main():
     else:
         manufacturer_id = snipeit.set_manufacturer(ansible_facts['ansible_system_vendor'])
 
+    fieldset_id = snipeit.set_fieldset(args.category)
+
+    #
+    # LOOP THROUG ANSIBLE FACTS AND ADD FIELDS
+    #
+    # sadly we need a copy because python doesnt allow adding to a running lop var
+    _ansible_facts = ansible_facts.copy()
+    for key in _ansible_facts:
+        if type(_ansible_facts[key]) is str:
+            field_id = snipeit.set_field(name=key, element='text', help_text=key)
+            fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+        if type(_ansible_facts[key]) is list:
+            if 'ansible_mounts' == key:
+                for each in _ansible_facts[key]:
+                    if 'device' in each:
+                        if not '/dev/loop' in each['device'] and not '/dev/fuse' in each['device']:
+                            for mount in each:
+                                field_id = snipeit.set_field(
+                                    name='ansible_mounts' +
+                                    each['device'].replace('/', '_') + "_" + str(mount),
+                                    element='text',
+                                    help_text=str(key) + "_" + str(each))
+                                fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+                                ansible_facts['ansible_mounts' +
+                                              each['device'].replace('/', '_') + "_" + str(mount)] = each[mount]
+
+        if type(_ansible_facts[key]) is dict:
+
+            if 'device' in _ansible_facts[key]:
+                for each in _ansible_facts[key]:
+                    if each in _ansible_facts[key] and type(_ansible_facts[key][each]) is str:
+                        field_id = snipeit.set_field(
+                            name=str(key) + "_" + str(each),
+                            element='text',
+                            help_text=str(key) + "_" + str(each))
+                        fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+                        ansible_facts[str(key) + "_" + str(each)] = _ansible_facts[key][each]
+                #
+                # add ipv4
+                #
+                if 'ipv4' in _ansible_facts[key]:
+                    for ipv4 in ansible_facts[key]['ipv4']:
+
+                        field_id = snipeit.set_field(
+                            name=str(key) + "_" + str(ipv4),
+                            element='text',
+                            help_text=str(key) + "_" + str(ipv4)
+                        )
+                        fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+                        ansible_facts[str(key) + "_" + str(ipv4)
+                                      ] = _ansible_facts[key]['ipv4'][ipv4]
+                #
+                # add ipv6
+                #
+                count = 0
+                if 'ipv6' in _ansible_facts[key]:
+                    for each in _ansible_facts[key]['ipv6']:
+                        for ipv6 in ansible_facts[key]['ipv6'][count]:
+
+                            field_id = snipeit.set_field(
+                                name=str(key) + "_ipv6_" + str(count) + "_" + str(ipv6),
+                                element='text',
+                                help_text=str(key) + "_ipv6_" + str(count) + "_" + str(ipv6)
+                            )
+                            fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+                            ansible_facts[str(key) + "_ipv6_" + str(count) + "_" + str(ipv6)
+                                          ] = _ansible_facts[key]['ipv6'][count][ipv6]
+                        count += 1
+
+    # a dict of the fields
+    dict_ansible_fieldsets = snipeit.get_fieldset_dict(fieldset_id=fieldset_id)
+
+    fields_dict = {}
+    for key in dict_ansible_fieldsets:
+        if key in ansible_facts:
+            fields_dict[dict_ansible_fieldsets[key]] = ansible_facts[key]
+
     if args.model and args.model_number:
         model_id = snipeit.set_model(
             name=args.model + " " + args.model_number,
             model_number=args.model_number,
             category_id=category_id,
+            manufacturer_id=manufacturer_id
+        )
+
+        model_id = snipeit.update_model(
+            model_id=str(model_id),
+            name=args.model + " " + args.model_number,
+            category_id=category_id,
+            fieldset_id=fieldset_id,
             manufacturer_id=manufacturer_id
         )
     else:
@@ -94,6 +179,15 @@ def main():
             " " + ansible_facts['ansible_product_serial'],
             model_number=ansible_facts['ansible_product_serial'],
             category_id=category_id,
+            manufacturer_id=manufacturer_id
+        )
+
+        model_id = snipeit.update_model(
+            model_id=str(model_id),
+            name=ansible_facts['ansible_product_name'] +
+            " " + ansible_facts['ansible_product_serial'],
+            category_id=category_id,
+            fieldset_id=fieldset_id,
             manufacturer_id=manufacturer_id
         )
 
@@ -116,7 +210,14 @@ def main():
             serial=ansible_facts['ansible_product_uuid'],
             status_id="2")
 
-    print(hardware_id)
+    # UPDATE ANSIBLE FIELDSET
+
+    hardware_id = snipeit.update_hardware_fields(
+        hardware_id=hardware_id,
+        fields_dict=fields_dict
+    )
+
+#    print(hardware_id)
 
 
 if __name__ == "__main__":

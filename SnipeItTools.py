@@ -408,6 +408,57 @@ class SnipeItTools:
 
         return(id)
 
+    def update_model(
+        self,
+        model_id,
+        name,
+        category_id,
+        manufacturer_id,
+        model_number=None,
+        eol=None,
+        fieldset_id=None,
+        depreciation_id=None,
+        notes=None,
+        requestable=None
+    ):
+
+        import requests
+        import json
+
+        url = self.base_url + "/api/v1/models/" + str(model_id)
+
+        payload = {
+            "name": name,
+            "category_id": category_id,
+            "manufacturer_id": manufacturer_id,
+        }
+
+        if model_number:
+            payload['model_number'] = model_number
+        if eol:
+            payload['eol'] = eol
+        if fieldset_id:
+            payload['fieldset_id'] = fieldset_id
+        if depreciation_id:
+            payload['depreciation_id'] = depreciation_id
+        if notes:
+            payload['notes'] = notes
+        if requestable:
+            payload['requestable'] = requestable
+
+        response = requests.request(
+            "PUT",
+            url,
+            json=payload,
+            headers=self.headers
+        )
+
+        response = json.loads(response.text)
+        id = response['payload']['id']
+
+        return(id)
+
+
 #
 # ASSETS
 #
@@ -492,6 +543,189 @@ class SnipeItTools:
                 payload['rtd_location_id'] = rtd_location_id
             if image:
                 payload['image']
+
+            response = requests.request(
+                "POST",
+                url,
+                json=payload,
+                headers=self.headers
+            )
+
+            response = json.loads(response.text)
+            id = response['payload']['id']
+
+        return(id)
+
+
+# XXXXXXXXX
+
+    def update_hardware_fields(
+        self,
+        hardware_id,
+        fields_dict
+    ):
+
+        import requests
+        import json
+
+        url = self.base_url + "/api/v1/hardware/" + str(hardware_id)
+
+        payload = fields_dict
+
+        response = requests.request(
+            "PUT",
+            url,
+            json=payload,
+            headers=self.headers
+        )
+
+        response = json.loads(response.text)
+        id = response['payload']['id']
+
+        return(id)
+
+    #
+    # FIELDSETS
+    #
+    def get_fieldset(self, name):
+
+        import requests
+        import json
+
+        id = False
+        url = self.base_url + "/api/v1/fieldsets"
+
+        response = requests.request("GET", url, headers=self.headers)
+        response = json.loads(response.text)
+
+        for row in response['rows']:
+            if row['name'] == name:
+                id = row['id']
+        return(id)
+
+    def get_fieldset_dict(self, fieldset_id):
+
+        import requests
+        import json
+
+        dict_fieldset = {}
+        url = self.base_url + "/api/v1/fieldsets/" + str(fieldset_id) + "fields"
+
+        response = requests.request("GET", url, headers=self.headers)
+        response = json.loads(response.text)
+
+        for row in response['fields']['rows']:
+            dict_fieldset[row['name']] = row['db_column_name']
+
+        return(dict_fieldset)
+
+    def set_fieldset(
+        self,
+        name,
+    ):
+
+        import requests
+        import json
+
+        url = self.base_url + "/api/v1/fieldsets"
+
+        id = self.get_fieldset(name)
+
+        if not id:
+            payload = {
+                "name": name,
+            }
+
+            response = requests.request(
+                "POST",
+                url,
+                json=payload,
+                headers=self.headers
+            )
+
+            response = json.loads(response.text)
+            id = response['payload']['id']
+
+        return(id)
+
+    #
+    # FIELDS
+    #
+    def get_field(self, name):
+
+        import requests
+        import json
+
+        id = False
+        url = self.base_url + "/api/v1/fields"
+
+        response = requests.request("GET", url, headers=self.headers)
+        response = json.loads(response.text)
+
+        for row in response['rows']:
+            if row['name'] == name:
+                id = row['id']
+
+        return(id)
+
+    def associate_field(self, field_id, fieldset_id):
+
+        import requests
+        import json
+
+        url = self.base_url + "/api/v1/fields/" + str(field_id) + "/associate"
+
+        payload = {
+            "field_id": field_id,
+            "fieldset_id": fieldset_id
+        }
+
+        response = requests.request(
+            "POST",
+            url,
+            json=payload,
+            headers=self.headers
+        )
+        response = json.loads(response.text)
+        id = response['payload']['id']
+
+        return(id)
+
+    def set_field(
+        self,
+        name,
+        element,
+        field_values=None,
+        show_in_email=None,
+        format="ANY",
+        field_encrypted=None,
+        help_text=None
+    ):
+
+        import requests
+        import json
+
+        url = self.base_url + "/api/v1/fields"
+
+        id = self.get_field(name)
+
+        if not id:
+
+            payload = {
+                "name": name,
+                "element": element,
+            }
+
+            if field_values:
+                payload['field_values'] = field_values
+            if show_in_email:
+                payload['show_in_email'] = show_in_email
+            if format:
+                payload['format'] = format
+            if field_encrypted:
+                payload['field_encrypted'] = field_encrypted
+            if help_text:
+                payload['help_text'] = help_text
 
             response = requests.request(
                 "POST",
