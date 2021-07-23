@@ -102,7 +102,7 @@ def main():
                                     name='ansible_mounts' +
                                     each['device'].replace('/', '_') + "_" + str(mount),
                                     element='text',
-                                    help='ansible_mounts' +
+                                    help_text='ansible_mounts' +
                                     each['device'].replace('/', '_') + "_" + str(mount)
                                 )
                                 fieldset_id = snipeit.associate_field(field_id, fieldset_id)
