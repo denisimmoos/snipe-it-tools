@@ -88,6 +88,7 @@ def main():
     #
     # sadly we need a copy because python doesnt allow adding to a running lop var
     _ansible_facts = ansible_facts.copy()
+
     for key in _ansible_facts:
         if type(_ansible_facts[key]) is str:
             field_id = snipeit.set_field(name=key, element='text', help_text=key)
@@ -110,6 +111,30 @@ def main():
                                               each['device'].replace('/', '_') + "_" + str(mount)] = each[mount]
 
         if type(_ansible_facts[key]) is dict:
+
+            if 'ansible_devices' == key:
+                for each in _ansible_facts[key]:
+                    if not 'loop' in each:
+                        for disk in ['model', 'host', 'size', 'vendor', 'uuid']:
+                            if disk in _ansible_facts[key][each]:
+                                field_id = snipeit.set_field(
+                                    name='ansible_devices_'
+                                    + str(each)
+                                    + "_"
+                                    + str(disk),
+                                    element='text',
+                                    help_text='ansible_devices_'
+                                    + str(each)
+                                    + "_"
+                                    + str(disk)
+                                )
+                                fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+                                ansible_facts[
+                                    'ansible_devices_'
+                                    + str(each)
+                                    + "_"
+                                    + str(disk)
+                                ] = _ansible_facts[key][each][disk]
 
             if 'device' in _ansible_facts[key]:
                 for each in _ansible_facts[key]:
