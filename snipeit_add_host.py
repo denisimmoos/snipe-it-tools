@@ -3,9 +3,9 @@
 
 from SnipeItTools import SnipeItTools
 import argparse
-import sys
 import subprocess
 import json
+import glob
 
 
 base_url = "http://127.0.0.1:666"
@@ -82,6 +82,28 @@ def main():
         manufacturer_id = snipeit.set_manufacturer(ansible_facts['ansible_system_vendor'])
 
     fieldset_id = snipeit.set_fieldset(args.category)
+
+    # EXTERNAL SOURCES
+
+    dict_external_sources = {}
+    for external_sources in glob.glob("external_sources/*"):
+        prefix = external_sources.split('/')
+        prefix = prefix[-1].split('.')
+        prefix = prefix[0]
+        proc = subprocess.check_output(
+            external_sources, universal_newlines=True, shell=True).split('\n')
+
+        for line in proc:
+            l = line.split(': ')
+            if len(l) > 1:
+                field_id = snipeit.set_field(
+                    name=str(prefix + "_" + l[0]),
+                    element='text',
+                    help_text=str(prefix + "_" + l[0]),
+                )
+                fieldset_id = snipeit.associate_field(field_id, fieldset_id)
+                # I violate the ansible fact var
+                ansible_facts[prefix + "_" + l[0]] = l[1]
 
     #
     # LOOP THROUG ANSIBLE FACTS AND ADD FIELDS
